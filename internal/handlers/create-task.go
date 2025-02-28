@@ -25,7 +25,7 @@ func CreateTask(c fiber.Ctx, taskCreator TaskCreator) error {
 		})
 	}
 
-	if errors := req.ValidateTaskRequest(); len(errors) > 0 {
+	if errors := req.ValidateCreateTaskRequest(); len(errors) > 0 {
 		return c.Status(http.StatusBadRequest).JSON(errors)
 	}
 

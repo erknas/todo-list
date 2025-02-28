@@ -27,7 +27,7 @@ func UpdateTask(c fiber.Ctx, taskUpdater TaskUpdater) error {
 		})
 	}
 
-	if errors := req.ValidateTaskRequest(); len(errors) > 0 {
+	if errors := req.ValidateUpdateTaskRequest(); len(errors) > 0 {
 		return c.Status(http.StatusBadRequest).JSON(errors)
 	}
 
@@ -40,11 +40,10 @@ func UpdateTask(c fiber.Ctx, taskUpdater TaskUpdater) error {
 	}
 
 	if err := taskUpdater.UpdateTask(c.Context(), id, req); err != nil {
-		var taskNotFound *storage.TaskNotFoundError
-		if errors.As(err, &taskNotFound) {
+		if errors.Is(err, storage.ErrNotFound) || errors.Is(err, storage.ErrNoUpdate) {
 			return c.Status(http.StatusBadRequest).JSON(fiber.Map{
 				"statusCode": http.StatusBadRequest,
-				"error":      taskNotFound.Error(),
+				"msg":        err.Error(),
 			})
 		}
 

@@ -25,11 +25,10 @@ func DeleteTask(c fiber.Ctx, taskDeleter TaskDeleter) error {
 	}
 
 	if err := taskDeleter.DeleteTask(c.Context(), id); err != nil {
-		var taskNotFound *storage.TaskNotFoundError
-		if errors.As(err, &taskNotFound) {
+		if errors.Is(err, storage.ErrNotFound) {
 			return c.Status(http.StatusBadRequest).JSON(fiber.Map{
 				"statusCode": http.StatusBadRequest,
-				"error":      taskNotFound.Error(),
+				"error":      err.Error(),
 			})
 		}
 
