@@ -1,11 +1,10 @@
 package storage
 
-import "fmt"
+import (
+	"errors"
+)
 
-type TaskNotFoundError struct {
-	ID int
-}
-
-func (e TaskNotFoundError) Error() string {
-	return fmt.Sprintf("task does not exist with ID: %d", e.ID)
-}
+var (
+	ErrNotFound = errors.New("task not found")
+	ErrNoUpdate = errors.New("nothing to update")
+)

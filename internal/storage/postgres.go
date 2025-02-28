@@ -38,9 +38,10 @@ func NewPostgresPool(ctx context.Context, cfg *config.Config) (*PostgresPool, er
 }
 
 func (p *PostgresPool) CreateTask(ctx context.Context, task types.TaskRequest) (int, error) {
-	query := `INSERT INTO tasks(title, description, status) VALUES($1, $2, $3) RETURNING id`
-
-	var id int
+	var (
+		id    int
+		query = `INSERT INTO tasks(title, description, status) VALUES($1, $2, $3) RETURNING id`
+	)
 
 	if err := p.pool.QueryRow(ctx, query, task.Title, task.Description, task.Status).Scan(&id); err != nil {
 		return -1, err
@@ -52,13 +53,13 @@ func (p *PostgresPool) CreateTask(ctx context.Context, task types.TaskRequest) (
 func (p *PostgresPool) GetTasks(ctx context.Context) ([]types.Task, error) {
 	query := `SELECT id, title, description, status, created_at, updated_at FROM tasks ORDER BY created_at`
 
-	var tasks []types.Task
-
 	rows, err := p.pool.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
+
+	var tasks []types.Task
 
 	for rows.Next() {
 		task := types.Task{}
@@ -76,15 +77,27 @@ func (p *PostgresPool) GetTasks(ctx context.Context) ([]types.Task, error) {
 }
 
 func (p *PostgresPool) UpdateTask(ctx context.Context, id int, req types.TaskRequest) error {
-	query, args := prepareUpdate(id, req)
+	var (
+		exists bool
+		check  = `SELECT EXISTS(SELECT 1 FROM tasks WHERE id=$1)`
+	)
 
-	res, err := p.pool.Exec(ctx, query, args...)
+	if err := p.pool.QueryRow(ctx, check, id).Scan(&exists); err != nil {
+		return err
+	}
+
+	if !exists {
+		return ErrNotFound
+	}
+
+	query, args, err := prepareUpdate(id, req)
 	if err != nil {
 		return err
 	}
 
-	if res.RowsAffected() == 0 {
-		return &TaskNotFoundError{ID: id}
+	_, err = p.pool.Exec(ctx, query, args...)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -99,7 +112,7 @@ func (p *PostgresPool) DeleteTask(ctx context.Context, id int) error {
 	}
 
 	if res.RowsAffected() == 0 {
-		return &TaskNotFoundError{ID: id}
+		return ErrNotFound
 	}
 
 	return nil
@@ -109,7 +122,7 @@ func (p *PostgresPool) Close() {
 	p.pool.Close()
 }
 
-func prepareUpdate(id int, req types.TaskRequest) (string, []any) {
+func prepareUpdate(id int, req types.TaskRequest) (string, []any, error) {
 	var (
 		args   []any
 		fields []string
@@ -136,6 +149,10 @@ func prepareUpdate(id int, req types.TaskRequest) (string, []any) {
 		count++
 	}
 
+	if len(fields) == 0 {
+		return "", nil, ErrNoUpdate
+	}
+
 	fields = append(fields, fmt.Sprintf("updated_at=$%d", count))
 	args = append(args, time.Now())
 	count++
@@ -143,7 +160,7 @@ func prepareUpdate(id int, req types.TaskRequest) (string, []any) {
 	query += fmt.Sprintf("%s WHERE id=$%d", join(fields, ", "), count)
 	args = append(args, id)
 
-	return query, args
+	return query, args, nil
 }
 
 func join(fields []string, sep string) string {
