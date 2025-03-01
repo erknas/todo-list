@@ -11,34 +11,37 @@ import (
 )
 
 type TaskCreator interface {
-	CreateTask(context.Context, types.TaskRequest) (int, error)
+	CreateTask(context.Context, types.NewTaskRequest) (types.NewTaskResponse, error)
 }
 
+// CreateTask handles the creation of a new task.
+// @Summary Create a task
+// @Description Create a new task with the provided details.
+// @Tags tasks
+// @Accept json
+// @Produce json
+// @Param task body types.NewTaskRequest true "Task data"
+// @Success 200 {object} types.NewTaskResponse
+// @Failure 400 {object} lib.APIError
+// @Failure 500 {object} lib.APIError
+// @Router /tasks [post]
 func CreateTask(c fiber.Ctx, taskCreator TaskCreator) error {
-	var req types.TaskRequest
+	var req types.NewTaskRequest
 
 	if err := c.Bind().Body(&req); err != nil {
 		slog.Error("failed to decode request body", lib.Err(err))
-		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
-			"statusCode": http.StatusBadRequest,
-			"error":      "invalid request data",
-		})
+		return c.Status(http.StatusBadRequest).JSON(lib.InvalidJSON())
 	}
 
 	if errors := req.ValidateCreateTaskRequest(); len(errors) > 0 {
-		return c.Status(http.StatusBadRequest).JSON(errors)
+		return c.Status(http.StatusUnprocessableEntity).JSON(lib.InvalidRequestData(errors))
 	}
 
-	id, err := taskCreator.CreateTask(c.Context(), req)
+	resp, err := taskCreator.CreateTask(c.Context(), req)
 	if err != nil {
 		slog.Error("create task failed", lib.Err(err))
-		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
-			"statusCode": http.StatusInternalServerError,
-			"error":      "internal server error",
-		})
+		return c.Status(http.StatusInternalServerError).JSON(lib.InternalServerError())
 	}
-
-	resp := lib.TaskResponse("task successfully created", id)
 
 	return c.JSON(resp)
 }

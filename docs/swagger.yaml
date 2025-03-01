@@ -1,0 +1,174 @@
+basePath: /tasks
+definitions:
+  lib.APIError:
+    properties:
+      msg: {}
+      statusCode:
+        type: integer
+    type: object
+  types.NewTaskRequest:
+    properties:
+      description:
+        type: string
+      status:
+        type: string
+      title:
+        type: string
+    type: object
+  types.NewTaskResponse:
+    properties:
+      createdAt:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      status:
+        type: string
+      title:
+        type: string
+    type: object
+  types.Task:
+    properties:
+      createdAt:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      status:
+        type: string
+      title:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  types.TaskResp:
+    properties:
+      msg:
+        type: string
+      taskID:
+        type: integer
+    type: object
+  types.Tasks:
+    properties:
+      tasks:
+        items:
+          $ref: "#/definitions/types.Task"
+        type: array
+    type: object
+host: localhost:3000
+info:
+  contact: {}
+  description: This is a simple API for managing tasks.
+  title: TODO-list API
+  version: "1.0"
+paths:
+  /tasks:
+    get:
+      description: Retrieve a list of all tasks.
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: "#/definitions/types.Tasks"
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: "#/definitions/lib.APIError"
+      summary: Get all tasks
+      tags:
+        - tasks
+    post:
+      consumes:
+        - application/json
+      description: Create a new task with the provided details.
+      parameters:
+        - description: Task data
+          in: body
+          name: task
+          required: true
+          schema:
+            $ref: "#/definitions/types.NewTaskRequest"
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: "#/definitions/types.NewTaskResponse"
+        "400":
+          description: Bad Request
+          schema:
+            $ref: "#/definitions/lib.APIError"
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: "#/definitions/lib.APIError"
+      summary: Create a task
+      tags:
+        - tasks
+  /tasks/:id:
+    delete:
+      description: Delete a task by its ID.
+      parameters:
+        - description: Task ID
+          in: path
+          name: id
+          required: true
+          type: string
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: "#/definitions/types.TaskResp"
+        "400":
+          description: Bad Request
+          schema:
+            $ref: "#/definitions/lib.APIError"
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: "#/definitions/lib.APIError"
+      summary: Delete a task
+      tags:
+        - tasks
+    put:
+      consumes:
+        - application/json
+      description: Update a task by its ID with the provided details.
+      parameters:
+        - description: Task ID
+          in: path
+          name: id
+          required: true
+          type: string
+        - description: Task data
+          in: body
+          name: task
+          required: true
+          schema:
+            $ref: "#/definitions/types.NewTaskRequest"
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: "#/definitions/types.TaskResp"
+        "400":
+          description: Bad Request
+          schema:
+            $ref: "#/definitions/lib.APIError"
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: "#/definitions/lib.APIError"
+      summary: Update a task
+      tags:
+        - tasks
+swagger: "2.0"
