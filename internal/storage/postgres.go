@@ -37,17 +37,26 @@ func NewPostgresPool(ctx context.Context, cfg *config.Config) (*PostgresPool, er
 	return &PostgresPool{pool: pool}, nil
 }
 
-func (p *PostgresPool) CreateTask(ctx context.Context, task types.TaskRequest) (int, error) {
+func (p *PostgresPool) CreateTask(ctx context.Context, req types.NewTaskRequest) (types.NewTaskResponse, error) {
 	var (
-		id    int
-		query = `INSERT INTO tasks(title, description, status) VALUES($1, $2, $3) RETURNING id`
+		id        int
+		createdAt time.Time
+		query     = `INSERT INTO tasks(title, description, status) VALUES($1, $2, $3) RETURNING id, created_at`
 	)
 
-	if err := p.pool.QueryRow(ctx, query, task.Title, task.Description, task.Status).Scan(&id); err != nil {
-		return -1, err
+	if err := p.pool.QueryRow(ctx, query, req.Title, req.Description, req.Status).Scan(&id, &createdAt); err != nil {
+		return types.NewTaskResponse{}, err
 	}
 
-	return id, nil
+	task := types.NewTaskResponse{
+		ID:          id,
+		Title:       req.Title,
+		Description: req.Description,
+		Status:      req.Status,
+		CreatedAt:   createdAt,
+	}
+
+	return task, nil
 }
 
 func (p *PostgresPool) GetTasks(ctx context.Context) ([]types.Task, error) {
@@ -76,7 +85,7 @@ func (p *PostgresPool) GetTasks(ctx context.Context) ([]types.Task, error) {
 	return tasks, nil
 }
 
-func (p *PostgresPool) UpdateTask(ctx context.Context, id int, req types.TaskRequest) error {
+func (p *PostgresPool) UpdateTask(ctx context.Context, id int, req types.NewTaskRequest) error {
 	var (
 		exists bool
 		check  = `SELECT EXISTS(SELECT 1 FROM tasks WHERE id=$1)`
@@ -122,7 +131,7 @@ func (p *PostgresPool) Close() {
 	p.pool.Close()
 }
 
-func prepareUpdate(id int, req types.TaskRequest) (string, []any, error) {
+func prepareUpdate(id int, req types.NewTaskRequest) (string, []any, error) {
 	var (
 		args   []any
 		fields []string
